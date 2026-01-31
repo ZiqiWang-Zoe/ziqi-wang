@@ -28,7 +28,7 @@ export function HeroSection() {
               View My Work
               <ArrowRight size={18} />
             </a>
-            <a href="#" className="btn-outline">
+            <a href="/resume.pdf" download className="btn-outline">
               <Download size={18} />
               Download Resume
             </a>
