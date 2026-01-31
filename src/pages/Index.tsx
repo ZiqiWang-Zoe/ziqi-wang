@@ -1,10 +1,9 @@
 import { Navigation } from '@/components/Navigation';
 import { HeroSection } from '@/components/HeroSection';
-import { OverviewSection } from '@/components/OverviewSection';
-import { ResearchSection } from '@/components/ResearchSection';
-import { AssessmentSection } from '@/components/AssessmentSection';
-import { LogicSection } from '@/components/LogicSection';
-import { EthicsSection } from '@/components/EthicsSection';
+import { AboutSection } from '@/components/AboutSection';
+import { ExperienceSection } from '@/components/ExperienceSection';
+import { ProjectsSection } from '@/components/ProjectsSection';
+import { SkillsSection } from '@/components/SkillsSection';
 import { ContactSection } from '@/components/ContactSection';
 import { Footer } from '@/components/Footer';
 
@@ -14,11 +13,10 @@ const Index = () => {
       <Navigation />
       <main>
         <HeroSection />
-        <OverviewSection />
-        <ResearchSection />
-        <AssessmentSection />
-        <LogicSection />
-        <EthicsSection />
+        <AboutSection />
+        <ExperienceSection />
+        <ProjectsSection />
+        <SkillsSection />
         <ContactSection />
       </main>
       <Footer />

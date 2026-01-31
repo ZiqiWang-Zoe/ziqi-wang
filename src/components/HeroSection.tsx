@@ -1,41 +1,46 @@
-import { ArrowDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ArrowRight, Download, Mail } from 'lucide-react';
 
 export function HeroSection() {
   return (
-    <section id="home" className="min-h-screen flex items-center justify-center pt-20">
-      <div className="section-container text-center">
-        <div className="max-w-3xl mx-auto">
-          <span className="badge-academic mb-6 opacity-0 animate-fade-in-up">
-            Graduate Capstone Project
-          </span>
+    <section id="home" className="min-h-screen flex items-center pt-20 pb-12">
+      <div className="container-main">
+        <div className="max-w-4xl">
+          <div className="animate-fade-up">
+            <span className="tag tag-primary mb-6">
+              Open to Opportunities
+            </span>
+          </div>
           
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-foreground mb-6 opacity-0 animate-fade-in-up animate-stagger-1" style={{ fontFamily: 'var(--font-serif)' }}>
-            Reducing Information Asymmetry in Skincare
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 animate-fade-up animate-delay-1" style={{ fontFamily: 'var(--font-display)' }}>
+            Hi, I'm <span className="text-primary">Ziqi Wang</span>
           </h1>
           
-          <p className="text-xl md:text-2xl text-muted-foreground mb-4 opacity-0 animate-fade-in-up animate-stagger-2" style={{ fontFamily: 'var(--font-serif)', fontWeight: 400 }}>
-            A Skin-Type–Based Recommendation System with Ingredient Transparency
+          <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-foreground/80 mb-6 animate-fade-up animate-delay-2" style={{ fontFamily: 'var(--font-display)' }}>
+            Digital Marketing & Social Media Strategist
+          </h2>
+          
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-10 animate-fade-up animate-delay-3">
+            Combining consumer insights, content strategy, and data-driven execution to build meaningful digital engagement.
           </p>
           
-          <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto mb-10 opacity-0 animate-fade-in-up animate-stagger-3">
-            An educational digital tool designed to help consumers better understand their skin and skincare ingredients through transparent, research-informed recommendations.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 opacity-0 animate-fade-in-up animate-stagger-4">
-            <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8">
-              <a href="#overview">View Project</a>
-            </Button>
+          <div className="flex flex-wrap gap-4 animate-fade-up animate-delay-4">
+            <a href="#projects" className="btn-primary">
+              View My Work
+              <ArrowRight size={18} />
+            </a>
+            <a href="#" className="btn-outline">
+              <Download size={18} />
+              Download Resume
+            </a>
+            <a href="#contact" className="btn-outline">
+              <Mail size={18} />
+              Contact Me
+            </a>
           </div>
         </div>
-        
-        <a
-          href="#overview"
-          className="inline-flex items-center justify-center mt-20 text-muted-foreground hover:text-foreground transition-colors opacity-0 animate-fade-in animate-stagger-4"
-          aria-label="Scroll to project overview"
-        >
-          <ArrowDown size={24} className="animate-bounce" />
-        </a>
+
+        {/* Decorative element */}
+        <div className="hidden lg:block absolute right-12 top-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-primary/5 blur-3xl" />
       </div>
     </section>
   );
