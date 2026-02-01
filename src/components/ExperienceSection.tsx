@@ -1,4 +1,4 @@
-import { Briefcase, Building2, GraduationCap, Sparkles } from 'lucide-react';
+import { Briefcase, Building2, GraduationCap } from 'lucide-react';
 
 const experiences = [
   {
@@ -6,11 +6,12 @@ const experiences = [
     title: 'Social Media Associate',
     company: 'Echobend',
     period: 'Recent',
-    description: 'Led social media strategy and content creation for multiple client accounts. Managed influencer partnerships, optimized content calendars, and tracked performance metrics.',
+    description: 'Executed and optimized multi-platform social media content and campaigns across multiple client accounts, supporting influencer initiatives and performance analysis.',
     achievements: [
-      'Increased engagement rates across client accounts',
-      'Coordinated influencer campaigns and brand collaborations',
-      'Developed data-driven content strategies',
+      'Executed end-to-end social media content strategies across multiple platforms including Meta Ads (Facebook and Instagram) and Website Traffic Campaign, driving an 11.7% increase in overall audience engagement.',
+      'Increased average short-form video views from ~1K to 7K per post through data-driven content optimization and trend analysis.',
+      'Supported influencer marketing initiatives by coordinating content execution and campaign rollouts involving macro influencers and celebrity partners (e.g., Sydney Sweeney, Rosé, Mariah Carey, Conan Gray).',
+      'Monitored performance metrics and iterated creative strategies to improve brand visibility and audience retention.',
     ],
     tools: ['Meta Ads Manager', 'Content Scheduling Tools', 'Analytics Platforms'],
   },
@@ -21,37 +22,64 @@ const experiences = [
     period: 'Previous',
     description: 'Supported growth marketing initiatives for a B2B technology company. Focused on content marketing, lead generation, and market research.',
     achievements: [
-      'Contributed to content marketing and SEO efforts',
-      'Assisted with market research and competitive analysis',
-      'Supported lead generation campaigns',
+      'Generated a database of 100+ potential B2B partners in the Bay Area, supporting business growth.',
+      'Supported recruitment of 10 software engineer interns through integrated tech + social campaigns.',
+      'Improved SEO, achieving a 12% increase in backlinks and ~15% weekly growth in website reach.',
     ],
     tools: ['Google Ads', 'SEO Tools', 'CRM Systems'],
+  },
+  {
+    icon: Briefcase,
+    title: 'Digital Media Assistant',
+    company: 'University Payroll & Benefit, Illinois, U.S.',
+    period: 'Aug. 2023 – May 2024',
+    description: 'Supported video production documentation, digital media refinement, and internal communication at a university administrative office.',
+    achievements: [
+      'Translated complex video production workflows into clear operational documentation, improving internal process efficiency.',
+      'Reviewed and refined digital media and administrative documents to enhance clarity, consistency, and usability.',
+      'Supported internal communication and documentation management using Microsoft Excel, OneNote, and Teams.',
+    ],
+    tools: ['Microsoft Excel', 'OneNote', 'Microsoft Teams'],
   },
   {
     icon: GraduationCap,
     title: 'Research Assistant',
     company: 'UIUC',
-    period: 'Academic',
+    period: ['Academic', 'Dec. 2022 – May 2024'],
     description: 'Conducted research on consumer behavior and marketing communications. Applied quantitative and qualitative research methods.',
     achievements: [
-      'Designed and analyzed consumer surveys',
-      'Applied statistical analysis to marketing research',
-      'Contributed to academic publications',
+      'Assisting in a VR project focused on the Proteus effect\'s impact on self-efficacy during exercise.',
+      'Conducting experiments, collecting data, and exploring the relationship between avatar appearance & gym interaction.',
+      'Strengthening communication skills through close collaboration with professors and research partners.',
+      'Developing proficiency in technical writing and digital technology design.',
     ],
-    tools: ['R', 'SPSS', 'Survey Design'],
+    tools: ['R', 'SPSS', 'Survey Design', 'AI Agent'],
   },
   {
-    icon: Sparkles,
-    title: 'Founder',
-    company: 'Independent Nail Art Business',
-    period: 'Entrepreneurial',
-    description: 'Founded and grew a nail art business through social media marketing and customer relationship management.',
+    icon: Briefcase,
+    title: 'Advertising Campaigner/Sales Team',
+    company: 'Amazon & GO, Illinois, U.S.',
+    period: 'Aug. 2022 – Dec. 2022',
+    description: 'Designed and executed advertising campaigns for consumer products, optimizing ad spend and driving sales growth.',
     achievements: [
-      'Built customer base through Instagram marketing',
-      'Developed brand identity and visual content',
-      'Managed end-to-end business operations',
+      'Designed and executed campaigns for Acure\'s "Incredibly Clear" product.',
+      'Optimized ad spend, driving a 20% increase in traffic & CTR.',
+      'Achieved the $2000 budget and sales goal, contributing to about 10% increase in sales within a 4-month period.',
     ],
-    tools: ['Instagram', 'Canva', 'Business Management'],
+    tools: ['Amazon Ads', 'Campaign Analytics', 'Sales Tracking'],
+  },
+  {
+    icon: Briefcase,
+    title: 'Brand Representative/Group Leader',
+    company: 'Abercrombie & Fitch, Beijing, China',
+    period: 'Apr. 2021 – Jul. 2021',
+    description: 'Led team in media promotion and event planning to drive brand awareness and sales.',
+    achievements: [
+      'Collaborated with a team to devise and execute media-promotion strategies.',
+      'Conducted innovative event planning to increase awareness of new products, resulting in a 30% increase in sales.',
+      'Achieved first prize in the store\'s seasonal sale competition, expanding the team from 5 to 8 members.',
+    ],
+    tools: ['Event Planning', 'Team Leadership', 'Sales Strategy'],
   },
 ];
 
@@ -85,7 +113,11 @@ export function ExperienceSection() {
                       </h3>
                       <p className="text-primary font-medium">{exp.company}</p>
                     </div>
-                    <span className="tag">{exp.period}</span>
+                    <div className="flex flex-wrap gap-2">
+                      {(Array.isArray(exp.period) ? exp.period : [exp.period]).map((p) => (
+                        <span key={p} className="tag">{p}</span>
+                      ))}
+                    </div>
                   </div>
                   
                   <p className="text-muted-foreground mb-4">{exp.description}</p>

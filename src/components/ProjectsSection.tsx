@@ -1,4 +1,4 @@
-import { ArrowUpRight, Beaker, Scale, Megaphone, TrendingUp } from 'lucide-react';
+import { ArrowUpRight, Beaker, Scale, TrendingUp } from 'lucide-react';
 
 const projects = [
   {
@@ -28,20 +28,6 @@ const projects = [
     ],
     outcomes: 'Delivered strategic insights on effective marketing approaches for complex, compliance-sensitive products.',
     tags: ['Market Research', 'Content Strategy', 'B2B Marketing'],
-  },
-  {
-    icon: Megaphone,
-    title: 'Social Media & Influencer Campaigns',
-    category: 'Agency Work',
-    context: 'Selected campaigns from agency work with consumer and lifestyle brands.',
-    role: 'Social Media Associate',
-    actions: [
-      'Managed multi-platform content calendars',
-      'Coordinated influencer partnerships and campaigns',
-      'Tracked and optimized campaign performance',
-    ],
-    outcomes: 'Delivered measurable improvements in engagement, reach, and brand awareness for client accounts.',
-    tags: ['Influencer Marketing', 'Content Creation', 'Analytics'],
   },
   {
     icon: TrendingUp,
