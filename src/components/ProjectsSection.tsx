@@ -1,6 +1,16 @@
 import { ArrowUpRight, Beaker, Scale, TrendingUp } from 'lucide-react';
 
-const projects = [
+const projects: {
+  icon: typeof Beaker;
+  title: string;
+  category: string;
+  context: string;
+  role: string;
+  actions: string[];
+  outcomes: string;
+  tags: string[];
+  url?: string;
+}[] = [
   {
     icon: Beaker,
     title: 'Skincare Consumer Insights & Recommendation System',
@@ -12,8 +22,23 @@ const projects = [
       'Developed ingredient transparency framework',
       'Built recommendation logic based on consumer research',
     ],
-    outcomes: 'Created an educational tool that helps consumers understand their skin and skincare ingredients through research-informed recommendations.',
-    tags: ['Consumer Research', 'UX Design', 'Data Analysis'],
+    outcomes: 'Created an educational tool that helps consumers understand their skin and skincare ingredients through research-informed recommendations. Currently building the website/app and plan to publish it once it\'s ready.',
+    tags: ['Consumer Research', 'UX Design', 'Data Analysis', 'Content Strategy', 'Digital Marketing', 'Brand Messaging', 'User Research', 'Product Development'],
+  },
+  {
+    icon: Scale,
+    title: 'L-MARS: Legal Multi-Agent Workflow with Orchestrated Reasoning and Agentic Search',
+    category: 'Research Publication',
+    context: 'Multi-agent system that reduces hallucination and uncertainty in legal question answering through coordinated reasoning and retrieval across heterogeneous sources (Serper web, local RAG, CourtListener case law).',
+    role: 'Co-Author',
+    actions: [
+      'Designed multi-agent workflow with Judge Agent for verification of sufficiency, jurisdiction, and temporal validity',
+      'Built iterative reasoning-search-verification loop to ground answers in authoritative law',
+      'Evaluated on LegalSearchQA benchmark (200 questions); improved factual accuracy and preference scores from human experts and LLM judges',
+    ],
+    outcomes: 'Demonstrated that multi-agent reasoning with agentic search offers a scalable blueprint for deploying LLMs in high-stakes legal domains requiring precise retrieval and deliberation.',
+    tags: ['Legal AI', 'Multi-Agent Systems', 'RAG', 'LLMs'],
+    url: 'https://arxiv.org/abs/2509.00761',
   },
   {
     icon: Scale,
@@ -96,6 +121,17 @@ export function ProjectsSection() {
                   <span key={tag} className="tag text-xs">{tag}</span>
                 ))}
               </div>
+              {project.url && (
+                <a
+                  href={project.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline mt-4"
+                >
+                  View paper
+                  <ArrowUpRight size={16} />
+                </a>
+              )}
             </div>
           ))}
         </div>

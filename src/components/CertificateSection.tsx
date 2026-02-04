@@ -1,4 +1,4 @@
-import { Award } from 'lucide-react';
+import { Award, ExternalLink, ShoppingBag } from 'lucide-react';
 
 // Brand icon components (inline SVG - official brand logos)
 function GoogleIcon({ size = 24 }: { size?: number }) {
@@ -21,11 +21,7 @@ function LinkedInIcon({ size = 24 }: { size?: number }) {
 }
 
 function AmazonIcon({ size = 24 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="#FF9900" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Amazon">
-      <path d="M15.23 17.22c.75.56 1.78.85 2.81.85 1.15 0 2.28-.32 3.22-.96.19-.14.21-.42.04-.58l-.53-.46c-.15-.13-.39-.1-.53.04-.71.51-1.63.76-2.71.76-1.44 0-2.82-.74-3.59-2.02l-2.19 1.07v3.36h-2.07V6.6h2.07v5.43l2.53-1.24zm-2.79-3.28c.24.95.96 1.69 2.04 1.69.9 0 1.52-.38 1.94-1.04l.11-.17-2.05-.96-.04.48zm10.49-3.34l-1.9.75c-.16.06-.26.23-.22.4l.25.99c.04.17.22.27.39.22l1.9-.75c.16-.06.26-.23.22-.4l-.25-.99c-.03-.17-.21-.27-.39-.22zm-7.39-3.39c-2.49 0-4.51 2.03-4.51 4.51s2.03 4.51 4.51 4.51 4.51-2.03 4.51-4.51-2.02-4.51-4.51-4.51zm0 7.02c-1.39 0-2.51-1.13-2.51-2.51s1.12-2.51 2.51-2.51 2.51 1.13 2.51 2.51-1.12 2.51-2.51 2.51z"/>
-    </svg>
-  );
+  return <ShoppingBag size={size} className="text-[#FF9900]" strokeWidth={2} />;
 }
 
 function getCertificateIcon(issuer: string, imageUrl?: string) {
@@ -46,11 +42,18 @@ function getCertificateIcon(issuer: string, imageUrl?: string) {
   }
 }
 
-const certificates: { title: string; issuer?: string; date?: string; imageUrl?: string }[] = [
-  { title: 'Google Analytics Individual Qualification', issuer: 'Google', date: 'Issued Apr 2025' },
+const certificates: {
+  title: string;
+  issuer?: string;
+  date?: string;
+  imageUrl?: string;
+  /** Path to certificate proof (image or PDF) in public folder, e.g. "certificates/ga-cert.pdf" */
+  proofUrl?: string;
+}[] = [
+  { title: 'Google Analytics Individual Qualification', issuer: 'Google', date: 'Issued Apr 2025', proofUrl: 'https://skillshop.credential.net/999b3c90-1d12-484b-8c0b-2e656d71c151#acc.NxMrTO6C' },
   { title: 'Google Ads Display Certification', issuer: 'Google', date: 'Issued Sep 2023' },
   { title: 'Google Ads Search Certification', issuer: 'Google', date: 'Issued Sep 2023' },
-  { title: 'Social Media Monitoring: Strategies and Skills', issuer: 'LinkedIn', date: 'Issued Mar 2023' },
+  { title: 'Social Media Monitoring: Strategies and Skills', issuer: 'LinkedIn', date: 'Issued Mar 2023', proofUrl: 'https://www.linkedin.com/learning/certificates/41c38e4a1d0e02eaa22ba31bf0d521481b02b3c78d5f7c2ce2cbaeafa962c09e' },
   { title: 'Sponsored Ads Certification', issuer: 'Amazon', date: 'Issued Dec 2022' },
 ];
 
@@ -83,6 +86,17 @@ export function CertificateSection() {
                     )}
                     {cert.date && (
                       <span className="tag mt-2 inline-block">{cert.date}</span>
+                    )}
+                    {cert.proofUrl && (
+                      <a
+                        href={cert.proofUrl.startsWith('http') ? cert.proofUrl : `${import.meta.env.BASE_URL}${cert.proofUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline mt-3"
+                      >
+                        View certificate
+                        <ExternalLink size={14} />
+                      </a>
                     )}
                   </div>
                 </div>
