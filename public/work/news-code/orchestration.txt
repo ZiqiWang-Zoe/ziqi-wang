@@ -1,0 +1,66 @@
+DAILY NEWS PUSH / ORCHESTRATION
+Selected source excerpts; not a runnable script.
+
+--- run_daily_digest.py | lines 56–59 ---
+    day = day or datetime.date.today()
+    run_dir = REPO / "report" / day.strftime("%m-%d-%Y")
+    (run_dir / "images").mkdir(parents=True, exist_ok=True)
+    return run_dir
+
+--- run_daily_digest.py | lines 106–119 ---
+    # Catch-up runs (a missed 09:00, or the logon trigger) must not re-send a
+    # digest that already went out today. A test run is exempt: rehearsing the
+    # pipeline after the day's real push is exactly when we need it most.
+    try:
+        if not test_to and verify_sent.already_sent():
+            print("Today's digest has already been sent — nothing to do.")
+            return 0
+    except Exception as exc:
+        print(f"[warn] could not check whether today's digest already went: {exc}")
+
+    if datetime.datetime.now().hour < DIGEST_HOUR and "--force" not in sys.argv:
+        print(f"Before {DIGEST_HOUR:02d}:00 — leaving today's digest to the "
+              f"scheduled run. Use --force to send now anyway.")
+        return 0
+
+--- run_daily_digest.py | lines 170–209 ---
+    if proc.returncode != 0:
+        status = "failed"
+        detail = f"The digest run exited {proc.returncode}."
+    else:
+        try:
+            status, detail = verify_sent.confirm()
+        except Exception as exc:
+            status, detail = "unknown", f"Delivery check itself failed: {exc}"
+        # A crash inside the run still means a broken digest even if a stale
+        # same-subject message happens to be sitting in Sent Items.
+        if status == "sent" and ("[fail]" in lower or "traceback" in lower):
+            status = "failed"
+            detail = ("The digest appears in Sent Items, but the run logged a "
+                      "failure or traceback — check the log before trusting it.")
+
+    # Local alert first: it needs neither Outlook nor the network, so it still
+    # reaches you when the status email below is exactly what's broken.
+    if status == "sent":
+        notify_local.report("OK", detail, n_active)
+    else:
+        notify_local.report(
+            f"digest {status}",
+            f"The {stamp} run finished as '{status}'. {detail} {n_active} "
+            f"subscribers may have received nothing. Log tail:\n{log_tail[-400:]}",
+            n_active,
+        )
+
+    try:
+        send_status_email.notify_status(status, subscribers=n_active, note=detail,
+                                       log_tail=log_tail)
+    except Exception as exc:
+        print(f"[warn] could not send status email: {exc}")
+
+    # Keep report/ at roughly one month. Runs last so a prune problem can never
+    # cost us the digest itself.
+    try:
+        subprocess.run([sys.executable, str(REPO / "prune_reports.py")],
+                       cwd=str(REPO), timeout=600)
+    except Exception as exc:
+        print(f"[warn] could not prune old reports: {exc}")

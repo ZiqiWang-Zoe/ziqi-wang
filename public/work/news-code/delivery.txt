@@ -1,0 +1,47 @@
+DAILY NEWS PUSH / DELIVERY
+Selected source excerpts; not a runnable script.
+
+--- send_daily_to_subscribers.py | lines 57–57 ---
+def confirm_sent(outlook, subject: str, timeout: int = SEND_CONFIRM_TIMEOUT) -> bool:
+
+--- send_daily_to_subscribers.py | lines 69–108 ---
+
+    def still_queued() -> bool:
+        for item in outbox.Items:
+            try:
+                if item.Subject == subject and not item.Sent:
+                    return True
+            except Exception:
+                continue
+        return False
+
+    def in_sent_items() -> bool:
+        items = sent.Items
+        items.Sort("[CreationTime]", True)
+        checked = 0
+        for item in items:
+            try:
+                if item.Subject == subject and item.Sent:
+                    return True
+            except Exception:
+                continue
+            checked += 1
+            if checked >= 25:      # only the newest handful can be this run's
+                break
+        return False
+
+    nudged = False
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not still_queued():
+            return in_sent_items()
+        if not nudged:
+            print("  ...still in the Outbox; forcing a send/receive")
+            try:
+                ns.SendAndReceive(False)
+            except Exception as exc:
+                print(f"  [warn] send/receive failed: {exc}")
+            nudged = True
+        time.sleep(3)
+
+    return False

@@ -1,0 +1,52 @@
+DAILY NEWS PUSH / MEDIA
+Selected source excerpts; not a runnable script.
+
+--- render_format2.py | lines 102–125 ---
+def crop_to_fill(src: Path, w: int = THUMB_W, h: int = THUMB_H,
+                  scale: int = THUMB_SCALE) -> Path:
+    """Center-crop src to exactly (w*scale) x (h*scale) pixels (aspect-fill, like CSS
+    object-fit:cover) and cache the result next to it. Rendered at `scale`x the display
+    size so it stays sharp under Windows/Outlook display scaling — the <img> tag still
+    declares width=w height=h, so this larger bitmap gets downsampled for display, not
+    upscaled from a same-size original. Outlook desktop's Word rendering engine also
+    ignores CSS object-fit, so pre-cropping the actual file (rather than cropping via
+    CSS at display time) is the only way to get an undistorted thumbnail in every
+    client, including Outlook."""
+    px_w, px_h = w * scale, h * scale
+    out = src.with_name(f"{src.stem}_crop{px_w}x{px_h}.jpg")
+    if out.exists() and out.stat().st_mtime >= src.stat().st_mtime:
+        return out
+    with Image.open(src) as im:
+        im = im.convert("RGB")
+        fill_scale = max(px_w / im.width, px_h / im.height)
+        new_w = max(px_w, round(im.width * fill_scale))
+        new_h = max(px_h, round(im.height * fill_scale))
+        im = im.resize((new_w, new_h), Image.LANCZOS)
+        left, top = (new_w - px_w) // 2, (new_h - px_h) // 2
+        im = im.crop((left, top, left + px_w, top + px_h))
+        im.save(out, "JPEG", quality=88)
+    return out
+
+--- send_via_outlook.py | lines 64–85 ---
+def attach_inline_images_map(mail, cid_map: dict) -> int:
+    """Same as attach_inline_images, but takes an in-memory {cid: path} map directly —
+    used by the per-subscriber daily sender, which builds one cid_map and reuses it
+    across many individual mail items instead of round-tripping through a sidecar file."""
+    n = 0
+    for cid, path in cid_map.items():
+        p = Path(path)
+        if not p.exists():
+            print(f"[warn] inline image missing, skipping: {p}")
+            continue
+        try:
+            att = mail.Attachments.Add(str(p.resolve()))
+            pa = att.PropertyAccessor
+            pa.SetProperty(PR_ATTACH_CONTENT_ID, cid)
+            try:
+                pa.SetProperty(PR_ATTACHMENT_HIDDEN, True)
+            except Exception:
+                pass          # not fatal — image still renders, just also lists as a file
+            n += 1
+        except Exception as exc:
+            print(f"[warn] could not attach inline image {p.name}: {exc}")
+    return n

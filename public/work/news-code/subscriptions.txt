@@ -1,0 +1,53 @@
+DAILY NEWS PUSH / SUBSCRIPTIONS
+Selected source excerpts; not a runnable script.
+
+--- process_subscription_emails.py | lines 95–105 ---
+def _sender_smtp(item) -> str:
+    """Real SMTP address for the sender. Exchange-internal senders report an
+    X.500 directory name (e.g. "/O=EXCHANGELABS/OU=.../CN=...") via
+    SenderEmailAddress, not a usable email — GetExchangeUser().PrimarySmtpAddress
+    is needed for those. External/SMTP senders already have a plain address."""
+    try:
+        if getattr(item, "SenderEmailType", "") == EXCHANGE_ADDRESS_TYPE:
+            return item.Sender.GetExchangeUser().PrimarySmtpAddress
+    except Exception:
+        pass
+    return item.SenderEmailAddress
+
+--- process_subscription_emails.py | lines 115–124 ---
+def _classify_tag(subject: str) -> str:
+    """Exact-tag subscribe/unsubscribe classification (the mailto: link path)."""
+    s = (subject or "").upper()
+    if UNSUBSCRIBE_TAG in s:
+        # UNSUBSCRIBE_IC_NEWS contains "SUBSCRIBE_IC_NEWS" as a substring, so
+        # check this first — a subject with both tags is treated as unsubscribe.
+        return "unsubscribe"
+    if SUBSCRIBE_TAG in s:
+        return "subscribe"
+    return ""
+
+--- process_subscription_emails.py | lines 209–224 ---
+            approve_target = _extract_admin_tag_email(subject, APPROVE_PREFIX)
+            reject_target = _extract_admin_tag_email(subject, REJECT_PREFIX)
+
+            if approve_target or reject_target:
+                if email != admin_email:
+                    print(f"[warn] ignoring approve/reject from non-admin sender {email!r}: {subject!r}")
+                    n_admin_ignored += 1
+                    continue
+                target = approve_target or reject_target
+                if dry_run:
+                    pending_entry = sc.load_pending().get(target, {})
+                else:
+                    pending_entry = sc.remove_pending(target)
+                if approve_target:
+                    if not dry_run:
+                        sc.set_subscribed(target, True, name=pending_entry.get("name", ""))
+
+--- subscribe_common.py | lines 34–39 ---
+def save_subscribers(data: dict) -> None:
+    """Atomic write (temp file + replace) so a crash or a concurrent reader never
+    sees a half-written/corrupted subscribers.json."""
+    tmp = SUBSCRIBERS_PATH.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    os.replace(tmp, SUBSCRIBERS_PATH)

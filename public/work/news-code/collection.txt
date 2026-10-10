@@ -1,0 +1,67 @@
+DAILY NEWS PUSH / COLLECTION
+Selected source excerpts; not a runnable script.
+
+--- scrape_news.py | lines 59–62 ---
+# Politeness / resilience knobs.
+REQUEST_DELAY = 1.5   # seconds to wait before every request (avoid hammering sources)
+MAX_RETRIES   = 2     # retries on 429 / transient network errors (403 is never retried)
+MAX_BACKOFF   = 60    # cap any single backoff sleep at this many seconds
+
+--- scrape_news.py | lines 153–169 ---
+        if resp.status_code == 429:
+            if attempt < MAX_RETRIES:
+                wait = min(_retry_after(resp) or 2 ** attempt * 5, MAX_BACKOFF)
+                print(f"    429 from {url}; backing off {wait}s", file=sys.stderr)
+                time.sleep(wait)
+                continue
+            return None, "rate-limited (429) — try again later"
+
+        if resp.status_code == 403:
+            return None, "blocked (403) — not retrying to avoid escalation"
+
+        if not resp.ok:
+            return None, f"HTTP {resp.status_code}"
+
+        return resp, None
+
+    return None, "exhausted retries"
+
+--- scrape_news.py | lines 176–213 ---
+def _parse_date(raw: str) -> "datetime | None":
+    raw = raw.strip()
+    if not raw:
+        return None
+
+    # RFC 2822 (standard RSS pubDate)
+    try:
+        return parsedate_to_datetime(raw).astimezone(timezone.utc)
+    except Exception:
+        pass
+
+    # ISO 8601 variants (incl. fractional seconds, e.g. Reuters' "...:40.147Z")
+    for fmt in ("%Y-%m-%dT%H:%M:%S.%f%z", "%Y-%m-%dT%H:%M:%S.%fZ",
+                "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d"):
+        try:
+            dt = datetime.strptime(raw, fmt)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc)
+        except ValueError:
+            pass
+
+    # Human-readable: "June 1, 2026" / "Jun 1, 2026" / "1 June 2026"
+    for fmt in ("%B %d, %Y", "%b %d, %Y", "%d %B %Y", "%d %b %Y"):
+        try:
+            return datetime.strptime(raw, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            pass
+
+    return None
+
+
+def _in_window(dt: "datetime | None", cutoff: datetime) -> bool:
+    if dt is None:
+        return False
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt >= cutoff

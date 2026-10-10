@@ -1,0 +1,39 @@
+DAILY NEWS PUSH / TESTING
+Selected source excerpts; not a runnable script.
+
+--- run_daily_digest.py | lines 144–146 ---
+    env = os.environ.copy()
+    if test_to:
+        env["IC_NEWS_ONLY_RECIPIENTS"] = test_to
+
+--- send_daily_to_subscribers.py | lines 51–54 ---
+def only_recipients(cli_value: str = "") -> list:
+    """Addresses this send is clamped to (lowercased); empty means no clamp."""
+    raw = cli_value or os.environ.get(ONLY_ENV, "")
+    return [e.strip().lower() for e in re.split(r"[;,]", raw) if e.strip()]
+
+--- send_daily_to_subscribers.py | lines 173–185 ---
+    only = only_recipients(args.only)
+    clamped = bool(only)
+    if clamped:
+        known = {e.lower(): e for e in emails}
+        unknown = [a for a in only if a not in known]
+        if unknown:
+            # Fail rather than silently dropping: a typo'd test address would
+            # otherwise look like a clean send that simply reached nobody.
+            print(f"[FAIL] Not active subscribers: {', '.join(unknown)}")
+            return 1
+        emails = [known[a] for a in only]
+        print(f"*** CLAMPED SEND — {len(emails)} recipient(s); the other "
+              f"{len(recipients) - len(emails)} active subscribers are excluded. ***")
+
+--- send_daily_to_subscribers.py | lines 229–237 ---
+        print(f"[OK] Sent to {len(emails)} BCC recipients.")
+        # Local proof-of-send, so a catch-up run can tell "already sent today" from
+        # "not sent yet" without needing Outlook to answer. See verify_sent.
+        # A clamped send reached a handful of testers, not the list, so recording
+        # it would make the next real run think the day was already delivered.
+        if clamped:
+            print("[clamped] Not writing .sent.json — this was not the daily push.")
+        else:
+            verify_sent.write_marker(subject, len(emails))

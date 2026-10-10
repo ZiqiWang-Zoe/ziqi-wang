@@ -1,0 +1,61 @@
+DAILY NEWS PUSH / FULLTEXT
+Selected source excerpts; not a runnable script.
+
+--- fetch_fulltext.py | lines 50–97 ---
+# Below this many characters we treat the page as a paywall preview, not an article.
+TRUNCATED_BELOW = 600
+# Cap stored text so one giant analyst post doesn't dominate the output file.
+DEFAULT_MAX_CHARS = 8000
+
+
+def extract_text(html: str) -> str:
+    """Heuristic main-body extraction: drop chrome, then take the container with
+    the most substantial <p> text. No third-party readability lib required."""
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup(["script", "style", "nav", "header", "footer", "aside",
+                     "form", "figure", "noscript", "button"]):
+        tag.decompose()
+
+    def collect(container) -> str:
+        parts = []
+        for p in container.find_all("p", recursive=True):
+            txt = p.get_text(" ", strip=True)
+            if len(txt) > 40 and not _BOILERPLATE.search(txt):
+                parts.append(txt)
+        return "\n".join(parts)
+
+    best = ""
+    for container in soup.find_all(["article", "main", "div", "section"]):
+        txt = collect(container)
+        if len(txt) > len(best):
+            best = txt
+
+    if not best:                       # fall back to every <p> on the page
+        best = collect(soup)
+
+    return best.strip()
+
+
+def fetch_one(url: str, max_chars: int) -> dict:
+    resp, reason = _fetch(url)
+    if resp is None:
+        return {"url": url, "status": "BLOCKED", "chars": 0,
+                "text": f"(could not fetch — {reason}; fall back to snippet)"}
+
+    text = extract_text(resp.text)
+    if len(text) < TRUNCATED_BELOW:
+        return {"url": url, "status": "TRUNCATED", "chars": len(text),
+                "text": (text or "(no article body found)") +
+                        "\n(only a preview was available — fall back to snippet)"}
+
+    return {"url": url, "status": "OK", "chars": len(text),
+            "text": text[:max_chars]}
+
+--- fetch_fulltext.py | lines 115–121 ---
+    # de-dupe, preserve order
+    seen, ordered = set(), []
+    for u in urls:
+        if u not in seen:
+            seen.add(u)
+            ordered.append(u)
+    return ordered

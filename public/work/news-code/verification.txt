@@ -1,0 +1,52 @@
+DAILY NEWS PUSH / VERIFICATION
+Selected source excerpts; not a runnable script.
+
+--- verify_sent.py | lines 133–167 ---
+def confirm(day: datetime.date | None = None) -> tuple[str, str]:
+    """Return (status, detail) where status is 'sent', 'failed' or 'unknown'.
+
+    'unknown' is reserved for genuinely undecidable cases — Outlook unreachable —
+    so it stops being the catch-all it was when the log was parsed for prose.
+    """
+    day = day or datetime.date.today()
+    if not report_html(day):
+        return "failed", (f"No digest was built for {day:%Y-%m-%d} "
+                          f"(report/{day:%m-%d-%Y}/ has no ranked.html).")
+
+    subject = expected_subject(day)
+    if not subject:
+        return "unknown", ("The digest HTML exists but its subject could not be "
+                           "parsed, so delivery could not be verified.")
+
+    found = in_sent_items(subject, day)
+    if found is True:
+        return "sent", f"'{subject}' confirmed in Outlook Sent Items."
+    if found is False:
+        return "failed", (f"'{subject}' was built but is NOT in Outlook Sent "
+                          f"Items — check the Outbox; subscribers likely got "
+                          f"nothing.")
+
+    # Outlook unreachable: the sender's own marker is weaker evidence (it records
+    # that Send() was confirmed earlier, not that the message is there now), but
+    # it beats reporting a delivered digest as undecidable.
+    marker = read_marker(day)
+    if marker:
+        return "sent", (f"'{subject}' recorded as sent to "
+                        f"{marker.get('recipients', '?')} recipients at "
+                        f"{marker.get('when', '?')} (Outlook unreachable, so this "
+                        f"is the sender's own record rather than Sent Items).")
+    return "unknown", (f"'{subject}' was built, but Outlook could not be reached "
+                       f"to confirm delivery. Check Sent Items manually.")
+
+--- verify_sent.py | lines 88–98 ---
+def already_sent(day: datetime.date | None = None) -> bool:
+    """Cheap, Outlook-free 'did today's push already go out?' for catch-up runs.
+
+    Only ever answers True on positive evidence, so a false negative costs a
+    duplicate build (annoying) while a false positive would cost the whole
+    digest (silent miss) — the asymmetry decides which way this leans.
+    """
+    if read_marker(day):
+        return True
+    subject = expected_subject(day)
+    return bool(subject) and in_sent_items(subject, day) is True

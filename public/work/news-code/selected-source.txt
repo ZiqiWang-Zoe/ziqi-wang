@@ -1,0 +1,449 @@
+Ziqi Wang | Daily News Push | Selected Python source
+Reviewed excerpts from the supplied project snapshot. Original line numbers are retained.
+These are reading excerpts, not a standalone runnable package. Gaps omit surrounding code.
+Recipient data, private configuration and runtime logs are not included.
+
+DAILY NEWS PUSH / DELIVERY
+Selected source excerpts; not a runnable script.
+
+--- send_daily_to_subscribers.py | lines 57–57 ---
+def confirm_sent(outlook, subject: str, timeout: int = SEND_CONFIRM_TIMEOUT) -> bool:
+
+--- send_daily_to_subscribers.py | lines 69–108 ---
+
+    def still_queued() -> bool:
+        for item in outbox.Items:
+            try:
+                if item.Subject == subject and not item.Sent:
+                    return True
+            except Exception:
+                continue
+        return False
+
+    def in_sent_items() -> bool:
+        items = sent.Items
+        items.Sort("[CreationTime]", True)
+        checked = 0
+        for item in items:
+            try:
+                if item.Subject == subject and item.Sent:
+                    return True
+            except Exception:
+                continue
+            checked += 1
+            if checked >= 25:      # only the newest handful can be this run's
+                break
+        return False
+
+    nudged = False
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not still_queued():
+            return in_sent_items()
+        if not nudged:
+            print("  ...still in the Outbox; forcing a send/receive")
+            try:
+                ns.SendAndReceive(False)
+            except Exception as exc:
+                print(f"  [warn] send/receive failed: {exc}")
+            nudged = True
+        time.sleep(3)
+
+    return False
+
+DAILY NEWS PUSH / VERIFICATION
+Selected source excerpts; not a runnable script.
+
+--- verify_sent.py | lines 133–167 ---
+def confirm(day: datetime.date | None = None) -> tuple[str, str]:
+    """Return (status, detail) where status is 'sent', 'failed' or 'unknown'.
+
+    'unknown' is reserved for genuinely undecidable cases — Outlook unreachable —
+    so it stops being the catch-all it was when the log was parsed for prose.
+    """
+    day = day or datetime.date.today()
+    if not report_html(day):
+        return "failed", (f"No digest was built for {day:%Y-%m-%d} "
+                          f"(report/{day:%m-%d-%Y}/ has no ranked.html).")
+
+    subject = expected_subject(day)
+    if not subject:
+        return "unknown", ("The digest HTML exists but its subject could not be "
+                           "parsed, so delivery could not be verified.")
+
+    found = in_sent_items(subject, day)
+    if found is True:
+        return "sent", f"'{subject}' confirmed in Outlook Sent Items."
+    if found is False:
+        return "failed", (f"'{subject}' was built but is NOT in Outlook Sent "
+                          f"Items — check the Outbox; subscribers likely got "
+                          f"nothing.")
+
+    # Outlook unreachable: the sender's own marker is weaker evidence (it records
+    # that Send() was confirmed earlier, not that the message is there now), but
+    # it beats reporting a delivered digest as undecidable.
+    marker = read_marker(day)
+    if marker:
+        return "sent", (f"'{subject}' recorded as sent to "
+                        f"{marker.get('recipients', '?')} recipients at "
+                        f"{marker.get('when', '?')} (Outlook unreachable, so this "
+                        f"is the sender's own record rather than Sent Items).")
+    return "unknown", (f"'{subject}' was built, but Outlook could not be reached "
+                       f"to confirm delivery. Check Sent Items manually.")
+
+--- verify_sent.py | lines 88–98 ---
+def already_sent(day: datetime.date | None = None) -> bool:
+    """Cheap, Outlook-free 'did today's push already go out?' for catch-up runs.
+
+    Only ever answers True on positive evidence, so a false negative costs a
+    duplicate build (annoying) while a false positive would cost the whole
+    digest (silent miss) — the asymmetry decides which way this leans.
+    """
+    if read_marker(day):
+        return True
+    subject = expected_subject(day)
+    return bool(subject) and in_sent_items(subject, day) is True
+
+DAILY NEWS PUSH / TESTING
+Selected source excerpts; not a runnable script.
+
+--- run_daily_digest.py | lines 144–146 ---
+    env = os.environ.copy()
+    if test_to:
+        env["IC_NEWS_ONLY_RECIPIENTS"] = test_to
+
+--- send_daily_to_subscribers.py | lines 51–54 ---
+def only_recipients(cli_value: str = "") -> list:
+    """Addresses this send is clamped to (lowercased); empty means no clamp."""
+    raw = cli_value or os.environ.get(ONLY_ENV, "")
+    return [e.strip().lower() for e in re.split(r"[;,]", raw) if e.strip()]
+
+--- send_daily_to_subscribers.py | lines 173–185 ---
+    only = only_recipients(args.only)
+    clamped = bool(only)
+    if clamped:
+        known = {e.lower(): e for e in emails}
+        unknown = [a for a in only if a not in known]
+        if unknown:
+            # Fail rather than silently dropping: a typo'd test address would
+            # otherwise look like a clean send that simply reached nobody.
+            print(f"[FAIL] Not active subscribers: {', '.join(unknown)}")
+            return 1
+        emails = [known[a] for a in only]
+        print(f"*** CLAMPED SEND — {len(emails)} recipient(s); the other "
+              f"{len(recipients) - len(emails)} active subscribers are excluded. ***")
+
+--- send_daily_to_subscribers.py | lines 229–237 ---
+        print(f"[OK] Sent to {len(emails)} BCC recipients.")
+        # Local proof-of-send, so a catch-up run can tell "already sent today" from
+        # "not sent yet" without needing Outlook to answer. See verify_sent.
+        # A clamped send reached a handful of testers, not the list, so recording
+        # it would make the next real run think the day was already delivered.
+        if clamped:
+            print("[clamped] Not writing .sent.json — this was not the daily push.")
+        else:
+            verify_sent.write_marker(subject, len(emails))
+
+DAILY NEWS PUSH / COLLECTION
+Selected source excerpts; not a runnable script.
+
+--- scrape_news.py | lines 59–62 ---
+# Politeness / resilience knobs.
+REQUEST_DELAY = 1.5   # seconds to wait before every request (avoid hammering sources)
+MAX_RETRIES   = 2     # retries on 429 / transient network errors (403 is never retried)
+MAX_BACKOFF   = 60    # cap any single backoff sleep at this many seconds
+
+--- scrape_news.py | lines 153–169 ---
+        if resp.status_code == 429:
+            if attempt < MAX_RETRIES:
+                wait = min(_retry_after(resp) or 2 ** attempt * 5, MAX_BACKOFF)
+                print(f"    429 from {url}; backing off {wait}s", file=sys.stderr)
+                time.sleep(wait)
+                continue
+            return None, "rate-limited (429) — try again later"
+
+        if resp.status_code == 403:
+            return None, "blocked (403) — not retrying to avoid escalation"
+
+        if not resp.ok:
+            return None, f"HTTP {resp.status_code}"
+
+        return resp, None
+
+    return None, "exhausted retries"
+
+--- scrape_news.py | lines 176–213 ---
+def _parse_date(raw: str) -> "datetime | None":
+    raw = raw.strip()
+    if not raw:
+        return None
+
+    # RFC 2822 (standard RSS pubDate)
+    try:
+        return parsedate_to_datetime(raw).astimezone(timezone.utc)
+    except Exception:
+        pass
+
+    # ISO 8601 variants (incl. fractional seconds, e.g. Reuters' "...:40.147Z")
+    for fmt in ("%Y-%m-%dT%H:%M:%S.%f%z", "%Y-%m-%dT%H:%M:%S.%fZ",
+                "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d"):
+        try:
+            dt = datetime.strptime(raw, fmt)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc)
+        except ValueError:
+            pass
+
+    # Human-readable: "June 1, 2026" / "Jun 1, 2026" / "1 June 2026"
+    for fmt in ("%B %d, %Y", "%b %d, %Y", "%d %B %Y", "%d %b %Y"):
+        try:
+            return datetime.strptime(raw, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            pass
+
+    return None
+
+
+def _in_window(dt: "datetime | None", cutoff: datetime) -> bool:
+    if dt is None:
+        return False
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt >= cutoff
+
+DAILY NEWS PUSH / FULLTEXT
+Selected source excerpts; not a runnable script.
+
+--- fetch_fulltext.py | lines 50–97 ---
+# Below this many characters we treat the page as a paywall preview, not an article.
+TRUNCATED_BELOW = 600
+# Cap stored text so one giant analyst post doesn't dominate the output file.
+DEFAULT_MAX_CHARS = 8000
+
+
+def extract_text(html: str) -> str:
+    """Heuristic main-body extraction: drop chrome, then take the container with
+    the most substantial <p> text. No third-party readability lib required."""
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup(["script", "style", "nav", "header", "footer", "aside",
+                     "form", "figure", "noscript", "button"]):
+        tag.decompose()
+
+    def collect(container) -> str:
+        parts = []
+        for p in container.find_all("p", recursive=True):
+            txt = p.get_text(" ", strip=True)
+            if len(txt) > 40 and not _BOILERPLATE.search(txt):
+                parts.append(txt)
+        return "\n".join(parts)
+
+    best = ""
+    for container in soup.find_all(["article", "main", "div", "section"]):
+        txt = collect(container)
+        if len(txt) > len(best):
+            best = txt
+
+    if not best:                       # fall back to every <p> on the page
+        best = collect(soup)
+
+    return best.strip()
+
+
+def fetch_one(url: str, max_chars: int) -> dict:
+    resp, reason = _fetch(url)
+    if resp is None:
+        return {"url": url, "status": "BLOCKED", "chars": 0,
+                "text": f"(could not fetch — {reason}; fall back to snippet)"}
+
+    text = extract_text(resp.text)
+    if len(text) < TRUNCATED_BELOW:
+        return {"url": url, "status": "TRUNCATED", "chars": len(text),
+                "text": (text or "(no article body found)") +
+                        "\n(only a preview was available — fall back to snippet)"}
+
+    return {"url": url, "status": "OK", "chars": len(text),
+            "text": text[:max_chars]}
+
+--- fetch_fulltext.py | lines 115–121 ---
+    # de-dupe, preserve order
+    seen, ordered = set(), []
+    for u in urls:
+        if u not in seen:
+            seen.add(u)
+            ordered.append(u)
+    return ordered
+
+DAILY NEWS PUSH / MEDIA
+Selected source excerpts; not a runnable script.
+
+--- render_format2.py | lines 102–125 ---
+def crop_to_fill(src: Path, w: int = THUMB_W, h: int = THUMB_H,
+                  scale: int = THUMB_SCALE) -> Path:
+    """Center-crop src to exactly (w*scale) x (h*scale) pixels (aspect-fill, like CSS
+    object-fit:cover) and cache the result next to it. Rendered at `scale`x the display
+    size so it stays sharp under Windows/Outlook display scaling — the <img> tag still
+    declares width=w height=h, so this larger bitmap gets downsampled for display, not
+    upscaled from a same-size original. Outlook desktop's Word rendering engine also
+    ignores CSS object-fit, so pre-cropping the actual file (rather than cropping via
+    CSS at display time) is the only way to get an undistorted thumbnail in every
+    client, including Outlook."""
+    px_w, px_h = w * scale, h * scale
+    out = src.with_name(f"{src.stem}_crop{px_w}x{px_h}.jpg")
+    if out.exists() and out.stat().st_mtime >= src.stat().st_mtime:
+        return out
+    with Image.open(src) as im:
+        im = im.convert("RGB")
+        fill_scale = max(px_w / im.width, px_h / im.height)
+        new_w = max(px_w, round(im.width * fill_scale))
+        new_h = max(px_h, round(im.height * fill_scale))
+        im = im.resize((new_w, new_h), Image.LANCZOS)
+        left, top = (new_w - px_w) // 2, (new_h - px_h) // 2
+        im = im.crop((left, top, left + px_w, top + px_h))
+        im.save(out, "JPEG", quality=88)
+    return out
+
+--- send_via_outlook.py | lines 64–85 ---
+def attach_inline_images_map(mail, cid_map: dict) -> int:
+    """Same as attach_inline_images, but takes an in-memory {cid: path} map directly —
+    used by the per-subscriber daily sender, which builds one cid_map and reuses it
+    across many individual mail items instead of round-tripping through a sidecar file."""
+    n = 0
+    for cid, path in cid_map.items():
+        p = Path(path)
+        if not p.exists():
+            print(f"[warn] inline image missing, skipping: {p}")
+            continue
+        try:
+            att = mail.Attachments.Add(str(p.resolve()))
+            pa = att.PropertyAccessor
+            pa.SetProperty(PR_ATTACH_CONTENT_ID, cid)
+            try:
+                pa.SetProperty(PR_ATTACHMENT_HIDDEN, True)
+            except Exception:
+                pass          # not fatal — image still renders, just also lists as a file
+            n += 1
+        except Exception as exc:
+            print(f"[warn] could not attach inline image {p.name}: {exc}")
+    return n
+
+DAILY NEWS PUSH / SUBSCRIPTIONS
+Selected source excerpts; not a runnable script.
+
+--- process_subscription_emails.py | lines 95–105 ---
+def _sender_smtp(item) -> str:
+    """Real SMTP address for the sender. Exchange-internal senders report an
+    X.500 directory name (e.g. "/O=EXCHANGELABS/OU=.../CN=...") via
+    SenderEmailAddress, not a usable email — GetExchangeUser().PrimarySmtpAddress
+    is needed for those. External/SMTP senders already have a plain address."""
+    try:
+        if getattr(item, "SenderEmailType", "") == EXCHANGE_ADDRESS_TYPE:
+            return item.Sender.GetExchangeUser().PrimarySmtpAddress
+    except Exception:
+        pass
+    return item.SenderEmailAddress
+
+--- process_subscription_emails.py | lines 115–124 ---
+def _classify_tag(subject: str) -> str:
+    """Exact-tag subscribe/unsubscribe classification (the mailto: link path)."""
+    s = (subject or "").upper()
+    if UNSUBSCRIBE_TAG in s:
+        # UNSUBSCRIBE_IC_NEWS contains "SUBSCRIBE_IC_NEWS" as a substring, so
+        # check this first — a subject with both tags is treated as unsubscribe.
+        return "unsubscribe"
+    if SUBSCRIBE_TAG in s:
+        return "subscribe"
+    return ""
+
+--- process_subscription_emails.py | lines 209–224 ---
+            approve_target = _extract_admin_tag_email(subject, APPROVE_PREFIX)
+            reject_target = _extract_admin_tag_email(subject, REJECT_PREFIX)
+
+            if approve_target or reject_target:
+                if email != admin_email:
+                    print(f"[warn] ignoring approve/reject from non-admin sender {email!r}: {subject!r}")
+                    n_admin_ignored += 1
+                    continue
+                target = approve_target or reject_target
+                if dry_run:
+                    pending_entry = sc.load_pending().get(target, {})
+                else:
+                    pending_entry = sc.remove_pending(target)
+                if approve_target:
+                    if not dry_run:
+                        sc.set_subscribed(target, True, name=pending_entry.get("name", ""))
+
+--- subscribe_common.py | lines 34–39 ---
+def save_subscribers(data: dict) -> None:
+    """Atomic write (temp file + replace) so a crash or a concurrent reader never
+    sees a half-written/corrupted subscribers.json."""
+    tmp = SUBSCRIBERS_PATH.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    os.replace(tmp, SUBSCRIBERS_PATH)
+
+DAILY NEWS PUSH / ORCHESTRATION
+Selected source excerpts; not a runnable script.
+
+--- run_daily_digest.py | lines 56–59 ---
+    day = day or datetime.date.today()
+    run_dir = REPO / "report" / day.strftime("%m-%d-%Y")
+    (run_dir / "images").mkdir(parents=True, exist_ok=True)
+    return run_dir
+
+--- run_daily_digest.py | lines 106–119 ---
+    # Catch-up runs (a missed 09:00, or the logon trigger) must not re-send a
+    # digest that already went out today. A test run is exempt: rehearsing the
+    # pipeline after the day's real push is exactly when we need it most.
+    try:
+        if not test_to and verify_sent.already_sent():
+            print("Today's digest has already been sent — nothing to do.")
+            return 0
+    except Exception as exc:
+        print(f"[warn] could not check whether today's digest already went: {exc}")
+
+    if datetime.datetime.now().hour < DIGEST_HOUR and "--force" not in sys.argv:
+        print(f"Before {DIGEST_HOUR:02d}:00 — leaving today's digest to the "
+              f"scheduled run. Use --force to send now anyway.")
+        return 0
+
+--- run_daily_digest.py | lines 170–209 ---
+    if proc.returncode != 0:
+        status = "failed"
+        detail = f"The digest run exited {proc.returncode}."
+    else:
+        try:
+            status, detail = verify_sent.confirm()
+        except Exception as exc:
+            status, detail = "unknown", f"Delivery check itself failed: {exc}"
+        # A crash inside the run still means a broken digest even if a stale
+        # same-subject message happens to be sitting in Sent Items.
+        if status == "sent" and ("[fail]" in lower or "traceback" in lower):
+            status = "failed"
+            detail = ("The digest appears in Sent Items, but the run logged a "
+                      "failure or traceback — check the log before trusting it.")
+
+    # Local alert first: it needs neither Outlook nor the network, so it still
+    # reaches you when the status email below is exactly what's broken.
+    if status == "sent":
+        notify_local.report("OK", detail, n_active)
+    else:
+        notify_local.report(
+            f"digest {status}",
+            f"The {stamp} run finished as '{status}'. {detail} {n_active} "
+            f"subscribers may have received nothing. Log tail:\n{log_tail[-400:]}",
+            n_active,
+        )
+
+    try:
+        send_status_email.notify_status(status, subscribers=n_active, note=detail,
+                                       log_tail=log_tail)
+    except Exception as exc:
+        print(f"[warn] could not send status email: {exc}")
+
+    # Keep report/ at roughly one month. Runs last so a prune problem can never
+    # cost us the digest itself.
+    try:
+        subprocess.run([sys.executable, str(REPO / "prune_reports.py")],
+                       cwd=str(REPO), timeout=600)
+    except Exception as exc:
+        print(f"[warn] could not prune old reports: {exc}")
